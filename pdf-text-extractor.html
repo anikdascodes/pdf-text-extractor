@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Extractor with Image Placeholders</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            text-align: center;
+        }
+        #file-input {
+            display: block;
+            margin: 20px 0;
+        }
+        #output {
+            white-space: pre-wrap;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        button {
+            display: block;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .page-break {
+            page-break-after: always;
+            border-top: 2px dashed #000;
+            margin: 20px 0;
+        }
+        .image-placeholder {
+            background-color: #f0f0f0;
+            border: 1px dashed #999;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Text Extractor with Image Placeholders</h1>
+    <input type="file" id="file-input" accept=".pdf">
+    <button id="copy-button" style="display: none;">Copy Text</button>
+    <div id="output"></div>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const output = document.getElementById('output');
+        const copyButton = document.getElementById('copy-button');
+
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file.type !== 'application/pdf') {
+                alert('Please select a PDF file.');
+                return;
+            }
+
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let text = '';
+
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const scale = 1.5;
+                const viewport = page.getViewport({ scale });
+                const content = await page.getTextContent();
+                const operatorList = await page.getOperatorList();
+                let lastY, textItems = [];
+                let imageCount = 0;
+
+                for (let j = 0; j < operatorList.fnArray.length; j++) {
+                    if (operatorList.fnArray[j] === pdfjsLib.OPS.paintImageXObject) {
+                        imageCount++;
+                    }
+                }
+
+                content.items.forEach((item, index) => {
+                    if (lastY != item.transform[5] && textItems.length !== 0) {
+                        text += textItems.join('') + '\n';
+                        textItems = [];
+                    }
+                    textItems.push(item.str);
+                    lastY = item.transform[5];
+
+                    // Insert image placeholder after every few text items
+                    if (imageCount > 0 && index % Math.floor(content.items.length / imageCount) === 0) {
+                        text += `\n[Image Placeholder]\n`;
+                        imageCount--;
+                    }
+                });
+
+                if (textItems.length !== 0) {
+                    text += textItems.join('') + '\n';
+                }
+
+                // Add any remaining image placeholders
+                while (imageCount > 0) {
+                    text += `\n[Image Placeholder]\n`;
+                    imageCount--;
+                }
+
+                if (i < pdf.numPages) {
+                    text += '\n--- Page ' + i + ' ---\n\n';
+                }
+            }
+
+            output.textContent = text;
+            copyButton.style.display = 'block';
+        });
+
+        copyButton.addEventListener('click', () => {
+            const range = document.createRange();
+            range.selectNode(output);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            alert('Text copied to clipboard!');
+        });
+    </script>
+</body>
+</html>
