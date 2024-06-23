@@ -3,64 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Text Extractor with Image Placeholders</title>
+    <title>Modern PDF Text Extractor</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
     <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2ecc71;
+            --background-color: #f5f6fa;
+            --text-color: #34495e;
+        }
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
-            line-height: 1.6;
+            padding: 2rem;
         }
         h1 {
             text-align: center;
+            color: var(--primary-color);
+            margin-bottom: 2rem;
+        }
+        .file-input-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2rem;
         }
         #file-input {
-            display: block;
-            margin: 20px 0;
+            display: none;
+        }
+        .file-input-label {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .file-input-label:hover {
+            background-color: #2980b9;
         }
         #output {
+            background-color: white;
+            border-radius: 5px;
+            padding: 1.5rem;
             white-space: pre-wrap;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 20px;
-            max-height: 400px;
+            font-family: 'Courier New', Courier, monospace;
+            height: 400px;
             overflow-y: auto;
-            font-family: monospace;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
-        button {
-            display: block;
-            margin: 20px 0;
-            padding: 10px 20px;
-            background-color: #4CAF50;
+        #copy-button {
+            display: none;
+            margin: 1.5rem auto;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--secondary-color);
             color: white;
             border: none;
+            border-radius: 5px;
             cursor: pointer;
+            transition: background-color 0.3s ease;
         }
-        button:hover {
-            background-color: #45a049;
+        #copy-button:hover {
+            background-color: #27ae60;
         }
         .page-break {
-            page-break-after: always;
-            border-top: 2px dashed #000;
-            margin: 20px 0;
+            border-top: 2px dashed var(--primary-color);
+            margin: 1rem 0;
+            opacity: 0.5;
         }
         .image-placeholder {
-            background-color: #f0f0f0;
-            border: 1px dashed #999;
-            padding: 10px;
-            margin: 10px 0;
+            background-color: #ecf0f1;
+            border: 1px dashed #bdc3c7;
+            padding: 0.5rem;
+            margin: 0.5rem 0;
             text-align: center;
             font-style: italic;
+            color: #7f8c8d;
+            border-radius: 3px;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
         }
     </style>
 </head>
 <body>
-    <h1>PDF Text Extractor with Image Placeholders</h1>
-    <input type="file" id="file-input" accept=".pdf">
-    <button id="copy-button" style="display: none;">Copy Text</button>
-    <div id="output"></div>
+    <div class="container">
+        <h1>Modern PDF Text Extractor</h1>
+        <div class="file-input-container">
+            <input type="file" id="file-input" accept=".pdf">
+            <label for="file-input" class="file-input-label">Choose PDF File</label>
+        </div>
+        <div id="output" class="fade-in"></div>
+        <button id="copy-button" class="fade-in">Copy Text</button>
+    </div>
 
     <script>
         const fileInput = document.getElementById('file-input');
@@ -73,6 +119,11 @@
                 alert('Please select a PDF file.');
                 return;
             }
+
+            output.textContent = 'Processing PDF...';
+            output.classList.remove('fade-in');
+            void output.offsetWidth; // Trigger reflow
+            output.classList.add('fade-in');
 
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
@@ -101,7 +152,6 @@
                     textItems.push(item.str);
                     lastY = item.transform[5];
 
-                    // Insert image placeholder after every few text items
                     if (imageCount > 0 && index % Math.floor(content.items.length / imageCount) === 0) {
                         text += `\n[Image Placeholder]\n`;
                         imageCount--;
@@ -112,7 +162,6 @@
                     text += textItems.join('') + '\n';
                 }
 
-                // Add any remaining image placeholders
                 while (imageCount > 0) {
                     text += `\n[Image Placeholder]\n`;
                     imageCount--;
@@ -125,6 +174,9 @@
 
             output.textContent = text;
             copyButton.style.display = 'block';
+            copyButton.classList.remove('fade-in');
+            void copyButton.offsetWidth; // Trigger reflow
+            copyButton.classList.add('fade-in');
         });
 
         copyButton.addEventListener('click', () => {
